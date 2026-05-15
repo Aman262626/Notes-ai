@@ -2,6 +2,37 @@ import { NextResponse } from "next/server";
 
 const SAMBANOVA_API_URL = "https://api.sambanova.ai/v1/chat/completions";
 
+function buildYouTubeMetadataPrompt() {
+  return `You are an expert Indian competitive exam preparation assistant. A YouTube video's transcript could not be extracted, but you have the video title and description. Use this metadata to create comprehensive study notes in Hindi (Hinglish where needed).
+
+IMPORTANT RULES:
+1. Use the video title and description to understand the topic
+2. Create detailed notes covering the topic thoroughly
+3. Include all important facts, dates, concepts, and explanations
+4. Make notes as LONG and DETAILED as needed
+5. If the title mentions an exam, focus on exam-relevant content
+6. Include expected questions and answers for this topic
+
+Output ONLY the HTML body content (no <html>, <head>, or <body> tags). Use proper HTML formatting:
+- Use <h1> for main title with emoji
+- Use <h2> for section headers with emojis
+- Use <h3> for sub-sections
+- Use <table> for data/comparisons
+- Use <ul>/<ol> for lists
+- Use <strong> for important terms
+- Use <mark> for key facts to remember
+- Use <blockquote> for important tips/tricks
+
+Structure:
+1. Video Summary - What the video likely covers based on title/description
+2. Detailed Notes - Comprehensive topic coverage
+3. Key Concepts Explained
+4. Quick Revision Points
+5. Expected Questions & Answers
+
+Write in Hindi with English terms where appropriate.`;
+}
+
 function buildYouTubeSystemPrompt() {
   return `You are an expert Indian competitive exam preparation assistant. You analyze YouTube video transcripts and create EXTREMELY detailed and comprehensive study notes in Hindi (Hinglish where needed).
 
@@ -128,7 +159,7 @@ function splitTranscript(transcript, maxChunkSize = 6000) {
 
 export async function POST(request) {
   try {
-    const { exam, subject, topic, apiKey, youtubeTranscript, videoTitle } =
+    const { exam, subject, topic, apiKey, youtubeTranscript, videoTitle, videoDescription } =
       await request.json();
 
     const key = apiKey || process.env.SAMBANOVA_API_KEY;
@@ -140,6 +171,28 @@ export async function POST(request) {
         },
         { status: 400 }
       );
+    }
+
+    if (videoDescription && !youtubeTranscript) {
+      const systemPrompt = buildYouTubeMetadataPrompt();
+      const userPrompt = `Create comprehensive study notes based on this YouTube video's metadata.
+
+Video Title: ${videoTitle || "Unknown"}
+${exam ? `Exam: ${exam}` : ""}
+
+Video Description:
+${videoDescription}
+
+INSTRUCTIONS:
+1. Analyze the title and description to understand the topic
+2. Create detailed, exam-focused notes on this topic
+3. Include all important facts, concepts, and explanations
+4. Add expected questions with answers
+5. Make the notes comprehensive and useful for exam preparation
+6. Note: The video transcript was not available, so notes are based on the topic identified from the title and description`;
+
+      const content = await callSambaNova(key, systemPrompt, userPrompt);
+      return NextResponse.json({ html: cleanHtml(content) });
     }
 
     if (youtubeTranscript) {
