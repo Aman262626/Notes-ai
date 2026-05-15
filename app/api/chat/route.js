@@ -23,8 +23,12 @@ const SYSTEM_PROMPT = `You are "NotesAI Helper" - a friendly AI assistant for an
 - Use emojis naturally
 - Be encouraging and motivating for exam preparation
 - IMPORTANT: When user asks to generate/create/explain any topic, you MUST include GENERATE_NOTES at the END of your message to trigger inline note generation. Format:
-  GENERATE_NOTES:{"exam":"exam_name","subject":"subject_name","topic":"specific_topic"}
-  Use this whenever user asks for notes, explanation, details, or any study content. The system will generate detailed notes and show them in the chat.
+  GENERATE_NOTES:{"exam":"exam_name","subject":"subject_name","topic":"specific_topic","userInstructions":"user ki EXACT requirements yahaan likho"}
+  The "userInstructions" field MUST capture EVERY specific requirement the user mentioned. Examples:
+  - User says "citizenship ke notes banao full details me article amendment sab kuchh underline karo 20 oneliner do" → userInstructions: "Full details with all articles (Article 5-11), all amendments (CAA etc.), underline important points, include exactly 20 one-liner facts at the end"
+  - User says "mughal empire ke notes tables me do" → userInstructions: "Present information in tabular format wherever possible"
+  - User says "short notes banao sirf important points" → userInstructions: "Keep notes short, only cover most important points"
+  NEVER ignore any user instruction. Copy their exact requirements into userInstructions.
   Keep your text response short (2-3 lines) when using GENERATE_NOTES - just acknowledge what you're generating.
 - For general questions/greetings/tips where no content generation is needed, respond normally without GENERATE_NOTES.`;
 
@@ -110,9 +114,9 @@ export async function POST(request) {
 
     const content = await callSambaNova(key, apiMessages, 1024);
 
-    const generateMatch = content.match(/GENERATE_NOTES:\s*(\{[^}]+\})/);
+    const generateMatch = content.match(/GENERATE_NOTES:\s*(\{[\s\S]*?\})/);
     const cleanContent = content
-      .replace(/GENERATE_NOTES:\s*\{[^}]+\}/, "")
+      .replace(/GENERATE_NOTES:\s*\{[\s\S]*?\}/, "")
       .trim();
 
     if (generateMatch) {
@@ -123,16 +127,18 @@ export async function POST(request) {
         return NextResponse.json({ message: cleanContent });
       }
 
-      const { exam, subject, topic } = params;
+      const { exam, subject, topic, userInstructions } = params;
       const topicInfo = topic ? `Specific Topic: ${topic}` : "";
       const subjectInfo = subject || "all subjects";
       const examName = exam || "Competitive Exam";
+      const userReqs = userInstructions || "";
 
       const systemPrompt = buildNotesPrompt();
       const userPrompt = `Create comprehensive study notes for:
 Exam: ${examName}
 Subject: ${subjectInfo}
 ${topicInfo}
+${userReqs ? `\n## USER'S SPECIFIC INSTRUCTIONS (MUST FOLLOW):\n${userReqs}\n\nYou MUST follow ALL of the user's instructions above. If they asked for specific articles, include ALL articles. If they asked for a specific number of one-liners, include EXACTLY that many. If they asked to underline important points, use <span class="underline-imp"> and <mark> heavily. Do NOT skip any requirement.` : ""}
 
 Analyze the latest ${examName} exam pattern. Focus on:
 1. Questions that appeared in the most recent ${examName} exam
