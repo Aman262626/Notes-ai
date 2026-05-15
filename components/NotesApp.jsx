@@ -59,17 +59,87 @@ export default function NotesApp() {
   const [topic, setTopic] = useState("");
   const [apiKey, setApiKey] = useState("");
   const [mode, setMode] = useState("notes");
+  const [inputMode, setInputMode] = useState("exam");
+  const [youtubeUrl, setYoutubeUrl] = useState("");
   const [loading, setLoading] = useState(false);
+  const [loadingStatus, setLoadingStatus] = useState("");
   const [notesHtml, setNotesHtml] = useState("");
   const [flashcards, setFlashcards] = useState([]);
   const [youtubeLinks, setYoutubeLinks] = useState([]);
+  const [videoInfo, setVideoInfo] = useState(null);
   const [error, setError] = useState("");
   const [flippedCards, setFlippedCards] = useState({});
   const notesRef = useRef(null);
 
   const selectedExam = exam === "Custom" ? customExam : exam;
 
+  const generateFromYouTube = async () => {
+    if (!youtubeUrl.trim()) {
+      setError("Please enter a YouTube video URL");
+      return;
+    }
+
+    setLoading(true);
+    setError("");
+    setNotesHtml("");
+    setFlashcards([]);
+    setVideoInfo(null);
+    setLoadingStatus("Extracting video transcript...");
+
+    try {
+      const extractRes = await fetch("/api/extract-youtube", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: youtubeUrl.trim() }),
+      });
+
+      const extractData = await extractRes.json();
+
+      if (!extractRes.ok) {
+        throw new Error(extractData.error || "Failed to extract video data");
+      }
+
+      setVideoInfo({
+        title: extractData.title,
+        author: extractData.author,
+        transcriptLength: extractData.transcriptLength,
+      });
+
+      setLoadingStatus(
+        `Transcript extracted (${Math.round(extractData.transcriptLength / 1000)}K chars). Generating comprehensive notes...`
+      );
+
+      const notesRes = await fetch("/api/generate-notes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          youtubeTranscript: extractData.transcript,
+          videoTitle: extractData.title,
+          exam: selectedExam || "",
+          apiKey: apiKey || undefined,
+        }),
+      });
+
+      const notesData = await notesRes.json();
+
+      if (!notesRes.ok) {
+        throw new Error(notesData.error || "Failed to generate notes");
+      }
+
+      setNotesHtml(notesData.html || "");
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+      setLoadingStatus("");
+    }
+  };
+
   const generateNotes = async () => {
+    if (inputMode === "youtube") {
+      return generateFromYouTube();
+    }
+
     if (!selectedExam) {
       setError("Please select or enter an exam name");
       return;
@@ -79,6 +149,7 @@ export default function NotesApp() {
     setError("");
     setNotesHtml("");
     setFlashcards([]);
+    setLoadingStatus("Generating notes...");
 
     const ytQuery = `${selectedExam} exam analysis latest questions ${subject !== "All Subjects" ? subject : ""}`;
     setYoutubeLinks([
@@ -128,11 +199,15 @@ export default function NotesApp() {
       setError(err.message);
     } finally {
       setLoading(false);
+      setLoadingStatus("");
     }
   };
 
   const downloadHtml = () => {
-    const title = `${selectedExam} - ${subject}${topic ? " - " + topic : ""} Notes`;
+    const title =
+      inputMode === "youtube" && videoInfo
+        ? videoInfo.title || "YouTube Video Notes"
+        : `${selectedExam} - ${subject}${topic ? " - " + topic : ""} Notes`;
 
     const fullHtml = `<!DOCTYPE html>
 <html lang="hi"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -249,105 +324,183 @@ p{font-size:15px;line-height:1.5}
           />
         </div>
 
-        {/* Exam & Subject Selection */}
-        <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 mb-6 border border-slate-700/50 slide-up">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-            <div>
+        {/* Input Mode Toggle */}
+        <div className="flex gap-3 mb-6 slide-up">
+          <button
+            onClick={() => setInputMode("exam")}
+            className={`flex-1 py-3 rounded-xl font-medium transition-all ${
+              inputMode === "exam"
+                ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/30"
+                : "bg-slate-800/50 text-slate-300 hover:bg-slate-700 border border-slate-700/50"
+            }`}
+          >
+            Exam &amp; Subject
+          </button>
+          <button
+            onClick={() => setInputMode("youtube")}
+            className={`flex-1 py-3 rounded-xl font-medium transition-all ${
+              inputMode === "youtube"
+                ? "bg-red-600 text-white shadow-lg shadow-red-500/30"
+                : "bg-slate-800/50 text-slate-300 hover:bg-slate-700 border border-slate-700/50"
+            }`}
+          >
+            YouTube Video Link
+          </button>
+        </div>
+
+        {/* YouTube URL Input */}
+        {inputMode === "youtube" && (
+          <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 mb-6 border border-red-500/30 slide-up">
+            <label className="block text-sm font-medium text-slate-300 mb-2">
+              YouTube Video URL
+            </label>
+            <input
+              type="url"
+              value={youtubeUrl}
+              onChange={(e) => setYoutubeUrl(e.target.value)}
+              placeholder="https://www.youtube.com/watch?v=... or https://youtu.be/..."
+              className="w-full bg-slate-900/50 border border-slate-600 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent mb-4"
+            />
+            <p className="text-slate-400 text-sm mb-4">
+              Video ka transcript extract karke AI se detailed notes generate
+              honge. Sabhi questions, options, aur explanations cover honge.
+            </p>
+
+            <div className="mb-4">
               <label className="block text-sm font-medium text-slate-300 mb-2">
-                Exam
+                Related Exam (Optional)
               </label>
               <select
                 value={exam}
                 onChange={(e) => setExam(e.target.value)}
-                className="w-full bg-slate-900/50 border border-slate-600 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full bg-slate-900/50 border border-slate-600 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-red-500"
               >
+                <option value="">-- Select Exam --</option>
                 {EXAMS.map((e) => (
                   <option key={e} value={e}>
                     {e}
                   </option>
                 ))}
               </select>
-              {exam === "Custom" && (
-                <input
-                  type="text"
-                  value={customExam}
-                  onChange={(e) => setCustomExam(e.target.value)}
-                  placeholder="Enter exam name..."
-                  className="w-full mt-2 bg-slate-900/50 border border-slate-600 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
-              )}
             </div>
-            <div>
+
+            <button
+              onClick={generateFromYouTube}
+              disabled={loading}
+              className={`w-full py-4 rounded-xl font-bold text-lg transition-all ${
+                loading
+                  ? "bg-slate-600 cursor-not-allowed generating"
+                  : "bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-500 hover:to-pink-500 shadow-lg shadow-red-500/30 hover:shadow-red-500/50"
+              }`}
+            >
+              {loading
+                ? loadingStatus || "Processing..."
+                : "Extract &amp; Generate Notes from Video"}
+            </button>
+          </div>
+        )}
+
+        {/* Exam & Subject Selection */}
+        {inputMode === "exam" && (
+          <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 mb-6 border border-slate-700/50 slide-up">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">
+                  Exam
+                </label>
+                <select
+                  value={exam}
+                  onChange={(e) => setExam(e.target.value)}
+                  className="w-full bg-slate-900/50 border border-slate-600 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                >
+                  {EXAMS.map((e) => (
+                    <option key={e} value={e}>
+                      {e}
+                    </option>
+                  ))}
+                </select>
+                {exam === "Custom" && (
+                  <input
+                    type="text"
+                    value={customExam}
+                    onChange={(e) => setCustomExam(e.target.value)}
+                    placeholder="Enter exam name..."
+                    className="w-full mt-2 bg-slate-900/50 border border-slate-600 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                )}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">
+                  Subject
+                </label>
+                <select
+                  value={subject}
+                  onChange={(e) => setSubject(e.target.value)}
+                  className="w-full bg-slate-900/50 border border-slate-600 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                >
+                  {SUBJECTS.map((s) => (
+                    <option key={s} value={s}>
+                      {s}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="mb-4">
               <label className="block text-sm font-medium text-slate-300 mb-2">
-                Subject
+                Specific Topic (Optional)
               </label>
-              <select
-                value={subject}
-                onChange={(e) => setSubject(e.target.value)}
-                className="w-full bg-slate-900/50 border border-slate-600 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              >
-                {SUBJECTS.map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
-              </select>
+              <input
+                type="text"
+                value={topic}
+                onChange={(e) => setTopic(e.target.value)}
+                placeholder="e.g., Mughal Empire, Trigonometry, Indian Constitution..."
+                className="w-full bg-slate-900/50 border border-slate-600 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
             </div>
-          </div>
 
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-slate-300 mb-2">
-              Specific Topic (Optional)
-            </label>
-            <input
-              type="text"
-              value={topic}
-              onChange={(e) => setTopic(e.target.value)}
-              placeholder="e.g., Mughal Empire, Trigonometry, Indian Constitution..."
-              className="w-full bg-slate-900/50 border border-slate-600 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            />
-          </div>
+            {/* Mode Selection */}
+            <div className="flex gap-3 mb-6">
+              <button
+                onClick={() => setMode("notes")}
+                className={`flex-1 py-3 rounded-xl font-medium transition-all ${
+                  mode === "notes"
+                    ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/30"
+                    : "bg-slate-700/50 text-slate-300 hover:bg-slate-700"
+                }`}
+              >
+                Notes
+              </button>
+              <button
+                onClick={() => setMode("flashcards")}
+                className={`flex-1 py-3 rounded-xl font-medium transition-all ${
+                  mode === "flashcards"
+                    ? "bg-purple-600 text-white shadow-lg shadow-purple-500/30"
+                    : "bg-slate-700/50 text-slate-300 hover:bg-slate-700"
+                }`}
+              >
+                Flashcards
+              </button>
+            </div>
 
-          {/* Mode Selection */}
-          <div className="flex gap-3 mb-6">
             <button
-              onClick={() => setMode("notes")}
-              className={`flex-1 py-3 rounded-xl font-medium transition-all ${
-                mode === "notes"
-                  ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/30"
-                  : "bg-slate-700/50 text-slate-300 hover:bg-slate-700"
+              onClick={generateNotes}
+              disabled={loading}
+              className={`w-full py-4 rounded-xl font-bold text-lg transition-all ${
+                loading
+                  ? "bg-slate-600 cursor-not-allowed generating"
+                  : "bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/50"
               }`}
             >
-              Notes
-            </button>
-            <button
-              onClick={() => setMode("flashcards")}
-              className={`flex-1 py-3 rounded-xl font-medium transition-all ${
-                mode === "flashcards"
-                  ? "bg-purple-600 text-white shadow-lg shadow-purple-500/30"
-                  : "bg-slate-700/50 text-slate-300 hover:bg-slate-700"
-              }`}
-            >
-              Flashcards
+              {loading
+                ? loadingStatus || "Generating... Please wait"
+                : mode === "flashcards"
+                  ? "Generate Flashcards"
+                  : "Generate Notes"}
             </button>
           </div>
-
-          <button
-            onClick={generateNotes}
-            disabled={loading}
-            className={`w-full py-4 rounded-xl font-bold text-lg transition-all ${
-              loading
-                ? "bg-slate-600 cursor-not-allowed generating"
-                : "bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/50"
-            }`}
-          >
-            {loading
-              ? "Generating... Please wait"
-              : mode === "flashcards"
-                ? "Generate Flashcards"
-                : "Generate Notes"}
-          </button>
-        </div>
+        )}
 
         {error && (
           <div className="bg-red-900/30 border border-red-500/50 rounded-2xl p-4 mb-6 text-red-300 slide-up">
@@ -355,8 +508,24 @@ p{font-size:15px;line-height:1.5}
           </div>
         )}
 
+        {/* Video Info */}
+        {videoInfo && (
+          <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-4 mb-6 border border-green-500/30 slide-up">
+            <div className="flex items-center gap-3">
+              <span className="text-green-400 text-xl">&#10003;</span>
+              <div>
+                <p className="text-white font-medium">{videoInfo.title}</p>
+                <p className="text-slate-400 text-sm">
+                  {videoInfo.author} &middot; Transcript:{" "}
+                  {Math.round(videoInfo.transcriptLength / 1000)}K characters
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* YouTube Links */}
-        {youtubeLinks.length > 0 && (
+        {youtubeLinks.length > 0 && inputMode === "exam" && (
           <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 mb-6 border border-slate-700/50 slide-up">
             <h3 className="text-lg font-semibold text-white mb-3">
               YouTube References
@@ -393,15 +562,17 @@ p{font-size:15px;line-height:1.5}
               >
                 Download HTML Notes
               </button>
-              <button
-                onClick={() => {
-                  setMode("flashcards");
-                  generateNotes();
-                }}
-                className="flex-1 py-3 bg-purple-600 hover:bg-purple-500 rounded-xl font-medium transition-all shadow-lg shadow-purple-500/20"
-              >
-                Generate Flashcards Too
-              </button>
+              {inputMode === "exam" && (
+                <button
+                  onClick={() => {
+                    setMode("flashcards");
+                    generateNotes();
+                  }}
+                  className="flex-1 py-3 bg-purple-600 hover:bg-purple-500 rounded-xl font-medium transition-all shadow-lg shadow-purple-500/20"
+                >
+                  Generate Flashcards Too
+                </button>
+              )}
             </div>
             <div
               ref={notesRef}
