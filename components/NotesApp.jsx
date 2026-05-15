@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useCallback } from "react";
+import ChatBot from "./ChatBot";
 
 const EXAMS = [
   "RRB NTPC",
@@ -72,6 +73,36 @@ export default function NotesApp() {
   const notesRef = useRef(null);
 
   const selectedExam = exam === "Custom" ? customExam : exam;
+
+  const handleChatAction = useCallback((action) => {
+    if (action.type === "youtube") {
+      setInputMode("youtube");
+      return;
+    }
+
+    setInputMode("exam");
+    if (action.exam) {
+      const matchedExam = EXAMS.find(
+        (e) => e.toLowerCase() === action.exam.toLowerCase()
+      );
+      if (matchedExam) {
+        setExam(matchedExam);
+      } else {
+        setExam("Custom");
+        setCustomExam(action.exam);
+      }
+    }
+    if (action.subject) {
+      const matchedSubject = SUBJECTS.find(
+        (s) => s.toLowerCase().includes(action.subject.toLowerCase())
+      );
+      if (matchedSubject) setSubject(matchedSubject);
+    }
+    if (action.topic) setTopic(action.topic);
+    setMode(action.type === "flashcards" ? "flashcards" : "notes");
+
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, []);
 
   const generateFromYouTube = async () => {
     if (!youtubeUrl.trim()) {
@@ -633,6 +664,12 @@ p{font-size:15px;line-height:1.5}
           </p>
         </footer>
       </div>
+
+      {/* AI Helper Chatbot */}
+      <ChatBot
+        apiKey={apiKey}
+        onAction={handleChatAction}
+      />
     </div>
   );
 }
