@@ -23,8 +23,12 @@ const SYSTEM_PROMPT = `You are "NotesAI Helper" - a friendly AI assistant for an
 - Use emojis naturally
 - Be encouraging and motivating for exam preparation
 - IMPORTANT: When user asks to generate/create/explain any topic, you MUST include GENERATE_NOTES at the END of your message to trigger inline note generation. Format:
-  GENERATE_NOTES:{"exam":"exam_name","subject":"subject_name","topic":"specific_topic"}
-  Use this whenever user asks for notes, explanation, details, or any study content. The system will generate detailed notes and show them in the chat.
+  GENERATE_NOTES:{"exam":"exam_name","subject":"subject_name","topic":"specific_topic","userInstructions":"user ki EXACT requirements yahaan likho"}
+  The "userInstructions" field MUST capture EVERY specific requirement the user mentioned. Examples:
+  - User says "citizenship ke notes banao full details me article amendment sab kuchh underline karo 20 oneliner do" → userInstructions: "Full details with all articles (Article 5-11), all amendments (CAA etc.), underline important points, include exactly 20 one-liner facts at the end"
+  - User says "mughal empire ke notes tables me do" → userInstructions: "Present information in tabular format wherever possible"
+  - User says "short notes banao sirf important points" → userInstructions: "Keep notes short, only cover most important points"
+  NEVER ignore any user instruction. Copy their exact requirements into userInstructions.
   Keep your text response short (2-3 lines) when using GENERATE_NOTES - just acknowledge what you're generating.
 - For general questions/greetings/tips where no content generation is needed, respond normally without GENERATE_NOTES.`;
 
@@ -58,24 +62,35 @@ function buildNotesPrompt() {
 
 Your notes should be extremely detailed, covering every important concept, formula, date, fact, and trick.
 
-Output ONLY the HTML body content (no <html>, <head>, or <body> tags). Use proper HTML formatting:
+Output ONLY the HTML body content (no <html>, <head>, or <body> tags). Use these special CSS classes for beautiful handwritten-style notes:
+
+IMPORTANT FORMATTING RULES:
 - Use <h1> for main title with emoji
 - Use <h2> for section headers with emojis
 - Use <h3> for sub-sections
+- Use <div class="important-box"> for important concepts (red border box)
+- Use <div class="tip-box"> for tips and tricks (green box)
+- Use <div class="warning-box"> for common mistakes/warnings (orange box)
+- Use <div class="formula-box"> for formulas and key data (blue box)
+- Use <div class="remember-box"> for must-remember facts (purple box)
+- Use <mark> for highlighted key terms
+- Use <span class="underline-imp"> for important underlined text
+- Use <strong> for bold important terms
 - Use <table> for data/comparisons
 - Use <ul>/<ol> for lists
-- Use <strong> for important terms
-- Use <mark> for key facts to remember
-- Use <blockquote> for important tips/tricks
+- Use <blockquote> for quotes and important statements
 
 Include these sections:
 1. Complete Notes - Thorough explanation of ALL topics
-2. Key Points - Most important facts and figures
+2. Key Points - Most important facts and figures (use <div class="important-box">)
 3. PYQ Analysis - Previous Year Questions pattern analysis
-4. Most Important Questions - Questions likely to appear
-5. Memory Tricks - Mnemonics and easy ways to remember
+4. Most Important Questions (90%+ chances) - Questions likely to appear (use <div class="remember-box">)
+5. Memory Tricks - Mnemonics and easy ways to remember (use <div class="tip-box">)
 6. Important Charts & Tables - Data in tabular format
 7. One-liner Facts - Quick revision points
+8. Important Formulas (if applicable) - Use <div class="formula-box">
+
+Use <mark> and <span class="underline-imp"> generously to highlight key facts. Put critical facts in <div class="important-box"> and tips in <div class="tip-box">. Use <div class="warning-box"> for common mistakes students make.
 
 Make the notes VERY comprehensive. Cover EVERY important topic thoroughly. Write in Hindi with English terms where appropriate (technical terms, formulas, etc.)`;
 }
@@ -99,9 +114,9 @@ export async function POST(request) {
 
     const content = await callSambaNova(key, apiMessages, 1024);
 
-    const generateMatch = content.match(/GENERATE_NOTES:\s*(\{[^}]+\})/);
+    const generateMatch = content.match(/GENERATE_NOTES:\s*(\{[\s\S]*?\})/);
     const cleanContent = content
-      .replace(/GENERATE_NOTES:\s*\{[^}]+\}/, "")
+      .replace(/GENERATE_NOTES:\s*\{[\s\S]*?\}/, "")
       .trim();
 
     if (generateMatch) {
@@ -112,16 +127,18 @@ export async function POST(request) {
         return NextResponse.json({ message: cleanContent });
       }
 
-      const { exam, subject, topic } = params;
+      const { exam, subject, topic, userInstructions } = params;
       const topicInfo = topic ? `Specific Topic: ${topic}` : "";
       const subjectInfo = subject || "all subjects";
       const examName = exam || "Competitive Exam";
+      const userReqs = userInstructions || "";
 
       const systemPrompt = buildNotesPrompt();
       const userPrompt = `Create comprehensive study notes for:
 Exam: ${examName}
 Subject: ${subjectInfo}
 ${topicInfo}
+${userReqs ? `\n## USER'S SPECIFIC INSTRUCTIONS (MUST FOLLOW):\n${userReqs}\n\nYou MUST follow ALL of the user's instructions above. If they asked for specific articles, include ALL articles. If they asked for a specific number of one-liners, include EXACTLY that many. If they asked to underline important points, use <span class="underline-imp"> and <mark> heavily. Do NOT skip any requirement.` : ""}
 
 Analyze the latest ${examName} exam pattern. Focus on:
 1. Questions that appeared in the most recent ${examName} exam

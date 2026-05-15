@@ -51,25 +51,47 @@ export default function ChatBot({ apiKey, onAction }) {
 
     const fullHtml = `<!DOCTYPE html>
 <html lang="hi"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<link href="https://fonts.googleapis.com/css2?family=Kalam:wght@300;400;700&family=Caveat:wght@400;600;700&display=swap" rel="stylesheet">
 <title>Notes — ${title}</title>
 <style>
-  body{font-family:'Segoe UI',system-ui,sans-serif;margin:0;padding:20px 30px;background:#fff;color:#333;line-height:1.8}
-  h1{color:#1e1b4b;border-bottom:3px solid #6366f1;padding-bottom:8px;font-size:1.5em;margin-top:20px}
-  h2{color:#312e81;border-bottom:2px solid #e0e7ff;padding-bottom:6px;font-size:1.25em;margin-top:25px}
-  h3{color:#3730a3;font-size:1.1em;margin-top:20px}
-  ul,ol{padding-left:20px} li{margin:4px 0}
-  table{border-collapse:collapse;width:100%;margin:15px 0}
-  th,td{border:1px solid #e2e8f0;padding:8px 12px;text-align:left}
-  th{background:#eef2ff;font-weight:600;color:#312e81}
-  tr:nth-child(even){background:#f8fafc}
-  blockquote{border-left:4px solid #6366f1;padding:10px 15px;background:#eef2ff;margin:15px 0;border-radius:0 8px 8px 0}
-  strong{color:#312e81}
-  mark{background:#fef08a;padding:2px 6px;border-radius:4px}
-  p{margin:8px 0;line-height:1.8}
-  @media print{body{padding:10px}}
+  :root{--red:#e53e3e;--green:#38a169;--blue:#3182ce;--orange:#dd6b20;--purple:#805ad5}
+  body{font-family:'Kalam','Caveat',cursive,system-ui,sans-serif;margin:0;padding:24px 32px;background:#fffdf7;background-image:linear-gradient(#e8e4dd 1px,transparent 1px);background-size:100% 32px;color:#2d3748;line-height:2;font-size:1.05rem}
+  h1{font-family:'Caveat',cursive;color:#1a202c;font-size:2.2em;margin:20px 0 12px;padding:10px 16px;background:linear-gradient(135deg,#667eea22,#764ba222);border-radius:12px;border-left:6px solid #667eea;position:relative}
+  h1::after{content:'';position:absolute;bottom:0;left:16px;right:16px;height:3px;background:linear-gradient(90deg,#667eea,#764ba2,#f093fb);border-radius:2px}
+  h2{font-family:'Caveat',cursive;font-size:1.6em;margin:28px 0 10px;padding:8px 14px;color:#fff;border-radius:10px}
+  h2:nth-of-type(6n+1){background:linear-gradient(135deg,#667eea,#764ba2)}
+  h2:nth-of-type(6n+2){background:linear-gradient(135deg,#f093fb,#f5576c)}
+  h2:nth-of-type(6n+3){background:linear-gradient(135deg,#4facfe,#00f2fe)}
+  h2:nth-of-type(6n+4){background:linear-gradient(135deg,#43e97b,#38f9d7)}
+  h2:nth-of-type(6n+5){background:linear-gradient(135deg,#fa709a,#fee140)}
+  h2:nth-of-type(6n+6){background:linear-gradient(135deg,#a18cd1,#fbc2eb)}
+  h3{font-family:'Caveat',cursive;color:#2d3748;font-size:1.3em;margin:20px 0 8px;padding-bottom:4px;border-bottom:2px dashed #cbd5e0}
+  ul,ol{padding-left:22px;margin:8px 0} li{margin:6px 0}
+  ul li::marker{color:var(--purple);font-size:1.2em} ol li::marker{color:var(--blue);font-weight:700}
+  table{border-collapse:separate;border-spacing:0;width:100%;margin:16px 0;border-radius:12px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.08)}
+  th{background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;padding:12px 16px;font-weight:700;text-align:left}
+  td{padding:10px 16px;border-bottom:1px solid #e2e8f0}
+  tr:nth-child(even){background:#f0ebff} tr:nth-child(odd){background:#fff} tr:hover{background:#e9e0ff}
+  blockquote{border-left:5px solid var(--purple);padding:14px 18px;background:linear-gradient(135deg,#faf5ff,#f3e8ff);margin:16px 0;border-radius:0 12px 12px 0;font-style:italic}
+  strong{color:#1a202c;background:linear-gradient(transparent 60%,#fef08a 60%);padding:0 2px}
+  mark{background:linear-gradient(135deg,#fef08a,#fbbf24);padding:2px 8px;border-radius:6px;font-weight:600;color:#744210;box-shadow:0 1px 3px rgba(0,0,0,0.1)}
+  .underline-imp{text-decoration:underline wavy var(--red);text-underline-offset:4px;font-weight:600}
+  .important-box{background:linear-gradient(135deg,#fff5f5,#fee2e2);border:2px solid #fc8181;border-left:6px solid var(--red);border-radius:12px;padding:16px 20px;margin:16px 0}
+  .important-box::before{content:'\\2757 Important';font-family:'Caveat',cursive;font-size:0.85em;font-weight:700;color:var(--red);display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:1px}
+  .tip-box{background:linear-gradient(135deg,#f0fff4,#c6f6d5);border:2px solid #68d391;border-left:6px solid var(--green);border-radius:12px;padding:16px 20px;margin:16px 0}
+  .tip-box::before{content:'\\1F4A1 Tip / Trick';font-family:'Caveat',cursive;font-size:0.85em;font-weight:700;color:var(--green);display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:1px}
+  .warning-box{background:linear-gradient(135deg,#fffaf0,#feebc8);border:2px solid #f6ad55;border-left:6px solid var(--orange);border-radius:12px;padding:16px 20px;margin:16px 0}
+  .warning-box::before{content:'\\26A0\\FE0F Warning';font-family:'Caveat',cursive;font-size:0.85em;font-weight:700;color:var(--orange);display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:1px}
+  .formula-box{background:linear-gradient(135deg,#ebf8ff,#bee3f8);border:2px solid #63b3ed;border-left:6px solid var(--blue);border-radius:12px;padding:16px 20px;margin:16px 0}
+  .formula-box::before{content:'\\1F4D0 Formula';font-family:'Caveat',cursive;font-size:0.85em;font-weight:700;color:var(--blue);display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:1px}
+  .remember-box{background:linear-gradient(135deg,#faf5ff,#e9d8fd);border:2px solid #b794f4;border-left:6px solid var(--purple);border-radius:12px;padding:16px 20px;margin:16px 0}
+  .remember-box::before{content:'\\1F9E0 Remember';font-family:'Caveat',cursive;font-size:0.85em;font-weight:700;color:var(--purple);display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:1px}
+  p{margin:8px 0;line-height:2}
+  @media print{body{padding:10px;background-image:none}}
+  @media(max-width:600px){body{padding:12px 14px;font-size:0.95rem}h1{font-size:1.6em}h2{font-size:1.3em}}
 </style></head><body>
 ${html}
-<footer style="margin-top:40px;padding-top:15px;border-top:2px solid #e0e7ff;color:#94a3b8;font-size:0.85em;text-align:center">
+<footer style="margin-top:40px;padding-top:15px;border-top:3px dashed #cbd5e0;color:#a0aec0;font-size:0.85em;text-align:center;font-family:'Caveat',cursive">
   Generated by AI Notes Maker | ${new Date().toLocaleDateString("hi-IN")}
 </footer>
 </body></html>`;
