@@ -2,6 +2,27 @@ import { NextResponse } from "next/server";
 
 const SAMBANOVA_API_URL = "https://api.sambanova.ai/v1/chat/completions";
 
+const NOTES_HTML_GUIDE = `
+Output ONLY the HTML body content (no <html>, <head>, or <body> tags). Use these special CSS classes for beautiful handwritten-style notes:
+
+IMPORTANT FORMATTING RULES:
+- Use <h1> for main title with emoji
+- Use <h2> for section headers with emojis
+- Use <h3> for sub-sections
+- Use <div class="important-box"> for important concepts (red border box)
+- Use <div class="tip-box"> for tips and tricks (green box)
+- Use <div class="warning-box"> for common mistakes/warnings (orange box)
+- Use <div class="formula-box"> for formulas and key data (blue box)
+- Use <div class="remember-box"> for must-remember facts (purple box)
+- Use <mark> for highlighted key terms
+- Use <span class="underline-imp"> for important underlined text
+- Use <strong> for bold important terms
+- Use <table> for data/comparisons
+- Use <ul>/<ol> for lists
+- Use <blockquote> for quotes and important statements
+- You can nest content inside boxes freely
+`;
+
 function buildYouTubeMetadataPrompt() {
   return `You are an expert Indian competitive exam preparation assistant. A YouTube video's transcript could not be extracted, but you have the video title and description. Use this metadata to create comprehensive study notes in Hindi (Hinglish where needed).
 
@@ -12,17 +33,7 @@ IMPORTANT RULES:
 4. Make notes as LONG and DETAILED as needed
 5. If the title mentions an exam, focus on exam-relevant content
 6. Include expected questions and answers for this topic
-
-Output ONLY the HTML body content (no <html>, <head>, or <body> tags). Use proper HTML formatting:
-- Use <h1> for main title with emoji
-- Use <h2> for section headers with emojis
-- Use <h3> for sub-sections
-- Use <table> for data/comparisons
-- Use <ul>/<ol> for lists
-- Use <strong> for important terms
-- Use <mark> for key facts to remember
-- Use <blockquote> for important tips/tricks
-
+${NOTES_HTML_GUIDE}
 Structure:
 1. Video Summary - What the video likely covers based on title/description
 2. Detailed Notes - Comprehensive topic coverage
@@ -44,19 +55,9 @@ IMPORTANT RULES:
 5. Do NOT skip any question - cover 100% of the content
 6. Make notes as LONG as needed - there is NO length limit
 7. Cover every single topic mentioned in the video
-
-Output ONLY the HTML body content (no <html>, <head>, or <body> tags). Use proper HTML formatting:
-- Use <h1> for main title with emoji
-- Use <h2> for section headers with emojis (each subject/topic gets its own section)
-- Use <h3> for individual questions
-- Use <table> for data/comparisons/options
-- Use <ul>/<ol> for lists
-- Use <strong> for important terms and correct answers
-- Use <mark> for key facts to remember
-- Use <blockquote> for important tips/tricks
-- Use <div style="background:#f5f5f5;padding:12px;border-left:4px solid #fdd835"> for highlighted sections
-- Use <div style="background:#e8f5e9;padding:12px;border-left:4px solid #4caf50"> for correct answers
-- Use <div style="background:#ffebee;padding:12px;border-left:4px solid #f44336"> for wrong answer explanations
+${NOTES_HTML_GUIDE}
+- Use <div class="tip-box"> for correct answer explanations
+- Use <div class="warning-box"> for wrong answer explanations
 
 Structure:
 1. 📚 Video Summary - What the video covers
@@ -72,26 +73,18 @@ function buildStandardSystemPrompt() {
   return `You are an expert Indian competitive exam preparation assistant. You create comprehensive, detailed study notes in Hindi (Hinglish where needed) for exam preparation.
 
 Your notes should be extremely detailed, covering every important concept, formula, date, fact, and trick.
-
-Output ONLY the HTML body content (no <html>, <head>, or <body> tags). Use proper HTML formatting:
-- Use <h1> for main title with emoji
-- Use <h2> for section headers with emojis
-- Use <h3> for sub-sections
-- Use <table> for data/comparisons
-- Use <ul>/<ol> for lists
-- Use <strong> for important terms
-- Use <mark> for key facts to remember
-- Use <blockquote> for important tips/tricks
-- Use <div style="background:#f5f5f5;padding:12px;border-left:4px solid #fdd835"> for highlighted sections
-
+${NOTES_HTML_GUIDE}
 Include these sections:
 1. 📚 Complete Notes - Thorough explanation of ALL topics
-2. 🎯 Key Points - Most important facts and figures
+2. 🎯 Key Points - Most important facts and figures (use <div class="important-box">)
 3. 📝 PYQ Analysis - Previous Year Questions pattern analysis
-4. ⚡ Most Important Questions (90%+ chances) - Questions likely to appear
-5. 🧠 Memory Tricks - Mnemonics and easy ways to remember
+4. ⚡ Most Important Questions (90%+ chances) - Questions likely to appear (use <div class="remember-box">)
+5. 🧠 Memory Tricks - Mnemonics and easy ways to remember (use <div class="tip-box">)
 6. 📊 Important Charts & Tables - Data in tabular format
 7. 🔥 One-liner Facts - Quick revision points
+8. 📐 Important Formulas (if applicable) - Use <div class="formula-box">
+
+Use <mark> and <span class="underline-imp"> generously to highlight key facts. Put critical facts in <div class="important-box"> and tips in <div class="tip-box">. Use <div class="warning-box"> for common mistakes students make.
 
 Make the notes VERY comprehensive. Cover EVERY important topic thoroughly. Write in Hindi with English terms where appropriate (technical terms, formulas, etc.)`;
 }

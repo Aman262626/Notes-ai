@@ -58,24 +58,35 @@ function buildNotesPrompt() {
 
 Your notes should be extremely detailed, covering every important concept, formula, date, fact, and trick.
 
-Output ONLY the HTML body content (no <html>, <head>, or <body> tags). Use proper HTML formatting:
+Output ONLY the HTML body content (no <html>, <head>, or <body> tags). Use these special CSS classes for beautiful handwritten-style notes:
+
+IMPORTANT FORMATTING RULES:
 - Use <h1> for main title with emoji
 - Use <h2> for section headers with emojis
 - Use <h3> for sub-sections
+- Use <div class="important-box"> for important concepts (red border box)
+- Use <div class="tip-box"> for tips and tricks (green box)
+- Use <div class="warning-box"> for common mistakes/warnings (orange box)
+- Use <div class="formula-box"> for formulas and key data (blue box)
+- Use <div class="remember-box"> for must-remember facts (purple box)
+- Use <mark> for highlighted key terms
+- Use <span class="underline-imp"> for important underlined text
+- Use <strong> for bold important terms
 - Use <table> for data/comparisons
 - Use <ul>/<ol> for lists
-- Use <strong> for important terms
-- Use <mark> for key facts to remember
-- Use <blockquote> for important tips/tricks
+- Use <blockquote> for quotes and important statements
 
 Include these sections:
 1. Complete Notes - Thorough explanation of ALL topics
-2. Key Points - Most important facts and figures
+2. Key Points - Most important facts and figures (use <div class="important-box">)
 3. PYQ Analysis - Previous Year Questions pattern analysis
-4. Most Important Questions - Questions likely to appear
-5. Memory Tricks - Mnemonics and easy ways to remember
+4. Most Important Questions (90%+ chances) - Questions likely to appear (use <div class="remember-box">)
+5. Memory Tricks - Mnemonics and easy ways to remember (use <div class="tip-box">)
 6. Important Charts & Tables - Data in tabular format
 7. One-liner Facts - Quick revision points
+8. Important Formulas (if applicable) - Use <div class="formula-box">
+
+Use <mark> and <span class="underline-imp"> generously to highlight key facts. Put critical facts in <div class="important-box"> and tips in <div class="tip-box">. Use <div class="warning-box"> for common mistakes students make.
 
 Make the notes VERY comprehensive. Cover EVERY important topic thoroughly. Write in Hindi with English terms where appropriate (technical terms, formulas, etc.)`;
 }
