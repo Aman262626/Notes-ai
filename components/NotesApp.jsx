@@ -130,25 +130,41 @@ export default function NotesApp() {
         throw new Error(extractData.error || "Failed to extract video data");
       }
 
+      const hasTranscript = !extractData.noTranscript && extractData.transcript;
+
       setVideoInfo({
         title: extractData.title,
         author: extractData.author,
-        transcriptLength: extractData.transcriptLength,
+        transcriptLength: hasTranscript ? extractData.transcriptLength : 0,
+        noTranscript: extractData.noTranscript || false,
       });
 
-      setLoadingStatus(
-        `Transcript extracted (${Math.round(extractData.transcriptLength / 1000)}K chars). Generating comprehensive notes...`
-      );
+      if (hasTranscript) {
+        setLoadingStatus(
+          `Transcript extracted (${Math.round(extractData.transcriptLength / 1000)}K chars). Generating comprehensive notes...`
+        );
+      } else {
+        setLoadingStatus(
+          "Transcript not available. Generating notes from video title & description..."
+        );
+      }
+
+      const notesBody = {
+        videoTitle: extractData.title,
+        exam: selectedExam || "",
+        apiKey: apiKey || undefined,
+      };
+
+      if (hasTranscript) {
+        notesBody.youtubeTranscript = extractData.transcript;
+      } else {
+        notesBody.videoDescription = extractData.description || extractData.title || "";
+      }
 
       const notesRes = await fetch("/api/generate-notes", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          youtubeTranscript: extractData.transcript,
-          videoTitle: extractData.title,
-          exam: selectedExam || "",
-          apiKey: apiKey || undefined,
-        }),
+        body: JSON.stringify(notesBody),
       });
 
       const notesData = await notesRes.json();
@@ -534,8 +550,13 @@ p{font-size:15px;line-height:1.5}
               <div>
                 <p className="text-white font-semibold text-sm">{videoInfo.title}</p>
                 <p className="text-slate-400 text-xs mt-1">
-                  {videoInfo.author} &middot; Transcript:{" "}
-                  {Math.round(videoInfo.transcriptLength / 1000)}K characters extracted
+                  {videoInfo.author}
+                  {videoInfo.noTranscript ? (
+                    <> &middot; <span className="text-yellow-400">Transcript unavailable &mdash; notes generated from video info</span></>
+                  ) : (
+                    <> &middot; Transcript:{" "}
+                    {Math.round(videoInfo.transcriptLength / 1000)}K characters extracted</>
+                  )}
                 </p>
               </div>
             </div>
